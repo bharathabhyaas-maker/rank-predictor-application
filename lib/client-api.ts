@@ -27,6 +27,8 @@ export interface TemplateStats {
 
 export async function getInstitutionStats(): Promise<InstitutionStats[]> {
   try {
+    console.log('🔍 Fetching institutions from client API...')
+    
     // Use the real database endpoint
     const response = await fetch('/api/institutions', {
       method: 'GET',
@@ -36,6 +38,8 @@ export async function getInstitutionStats(): Promise<InstitutionStats[]> {
       }
     })
     
+    console.log('📡 Institutions API Response Status:', response.status)
+    
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}))
       const errorMessage = errorData.error || errorData.details || 'Failed to fetch institutions'
@@ -44,7 +48,8 @@ export async function getInstitutionStats(): Promise<InstitutionStats[]> {
     }
     
     const data = await response.json()
-    console.log('✅ Successfully fetched institutions:', data.length)
+    console.log('✅ Successfully fetched institutions from API:', data.length)
+    console.log('📋 Institutions Data:', data)
     return data
     
   } catch (error: any) {
@@ -52,7 +57,7 @@ export async function getInstitutionStats(): Promise<InstitutionStats[]> {
     
     // Return mock data as fallback if server is not available
     console.log('🔄 Using fallback mock data due to network error')
-    return [
+    const fallbackData = [
       {
         id: '1',
         institutionId: 'IID0001',
@@ -67,6 +72,8 @@ export async function getInstitutionStats(): Promise<InstitutionStats[]> {
         plan: 'standard'
       }
     ]
+    console.log('📋 Fallback Data:', fallbackData)
+    return fallbackData
   }
 }
 

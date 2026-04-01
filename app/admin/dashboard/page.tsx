@@ -34,6 +34,8 @@ export default function AdminDashboardPage() {
   const loadDashboardData = async () => {
     try {
       setLoading(true)
+      console.log('🔍 Loading dashboard data...')
+      
       const [templatesData, institutionsData, predictions, students, activeInst, institutionsWithTemplatesData] = await Promise.all([
         getTemplateStats(),
         getInstitutionStats(),
@@ -42,6 +44,15 @@ export default function AdminDashboardPage() {
         getActiveInstitutionCount(),
         getInstitutionsWithTemplatesCount()
       ])
+      
+      console.log('📊 Dashboard Data Loaded:')
+      console.log('  - Templates:', templatesData.length)
+      console.log('  - Institutions:', institutionsData.length)
+      console.log('  - Institutions Details:', institutionsData)
+      console.log('  - Predictions:', predictions)
+      console.log('  - Students:', students)
+      console.log('  - Active Institutions:', activeInst)
+      console.log('  - Institutions with Templates:', institutionsWithTemplatesData)
       
       setTemplates(templatesData)
       setInstitutions(institutionsData)

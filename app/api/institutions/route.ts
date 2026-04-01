@@ -2,6 +2,22 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/database'
 import { Institution } from '@prisma/client'
 
+interface TemplateAssignment {
+  institutionId: string
+  templateId: string
+  assignedAt: Date
+  assignment_status: string
+  template_name: string
+  template_examCode: string
+}
+
+interface Prediction {
+  institutionId: string
+  templateId: string
+  studentEmail: string
+  createdAt: Date
+}
+
 export async function GET() {
   try {
     console.log('🔍 Fetching institutions from database...')
@@ -12,12 +28,21 @@ export async function GET() {
       }
     })
 
-    console.log(`✅ Found ${institutions.length} institutions`)
+    console.log(`✅ Found ${institutions.length} institutions in database`)
+    console.log('📋 Database Institutions:', institutions.map(inst => ({
+      id: inst.id,
+      institutionId: inst.institutionId,
+      name: inst.name,
+      email: inst.email,
+      status: inst.status,
+      plan: inst.plan,
+      createdAt: inst.createdAt
+    })))
 
     // Get template assignments and predictions manually
     const institutionIds = institutions.map((inst: Institution) => inst.id)
     
-    const templateAssignments = await prisma.$queryRaw`
+    const templateAssignments = await prisma.$queryRaw<TemplateAssignment[]>`
       SELECT 
         "institutionId", 
         "templateId", 
@@ -30,36 +55,39 @@ export async function GET() {
       WHERE it."institutionId" = ANY(${institutionIds})
     `
     
-    const predictions = await prisma.$queryRaw`
+    const predictions = await prisma.$queryRaw<Prediction[]>`
       SELECT "institutionId", "templateId", "studentEmail", "createdAt"
       FROM predictions
       WHERE "institutionId" = ANY(${institutionIds})
     `
 
+    console.log(`📊 Found ${templateAssignments.length} template assignments`)
+    console.log(`📊 Found ${predictions.length} predictions`)
+
     // Transform data to match the expected format
     const transformedInstitutions = institutions.map((inst: Institution) => {
       // Get template assignments for this institution
-      const assignments = (templateAssignments as any[]).filter(
-        (assignment: any) => assignment.institutionId === inst.id
+      const assignments = templateAssignments.filter(
+        (assignment: TemplateAssignment) => assignment.institutionId === inst.id
       )
       
       // Get predictions for this institution
-      const institutionPredictions = (predictions as any[]).filter(
-        (prediction: any) => prediction.institutionId === inst.id
+      const institutionPredictions = predictions.filter(
+        (prediction: Prediction) => prediction.institutionId === inst.id
       )
       
       // Get assigned template IDs
-      const assignedTemplateIds = assignments.map((assignment: any) => assignment.templateId)
+      const assignedTemplateIds = assignments.map((assignment: TemplateAssignment) => assignment.templateId)
       
       // Only count predictions for assigned templates
-      const validPredictions = institutionPredictions.filter((prediction: any) => 
+      const validPredictions = institutionPredictions.filter((prediction: Prediction) => 
         assignedTemplateIds.includes(prediction.templateId)
       )
       
       // Count unique students from valid predictions
-      const uniqueStudents = new Set(validPredictions.map((p: any) => p.studentEmail)).size
+      const uniqueStudents = new Set(validPredictions.map((p: Prediction) => p.studentEmail)).size
       
-      return {
+      const transformedInst = {
         id: inst.id,
         institutionId: inst.institutionId,
         name: inst.name,
@@ -73,15 +101,25 @@ export async function GET() {
         plan: inst.plan,
         contactPerson: inst.contactPerson,
         phone: inst.phone,
-        assignedTo: assignments.map((assignment: any) => ({
-          id: assignment.id || `${assignment.institutionId}-${assignment.templateId}`,
+        assignedTo: assignments.map((assignment: TemplateAssignment) => ({
+          id: assignment.templateId || `${assignment.institutionId}-${assignment.templateId}`,
           templateId: assignment.templateId,
           templateName: assignment.template_name,
           assignedAt: assignment.assignedAt,
           status: assignment.assignment_status
         }))
       }
+
+      console.log(`🔄 Transformed institution ${inst.name}:`, {
+        students: uniqueStudents,
+        templatesAssigned: assignments.length,
+        predictions: validPredictions.length
+      })
+
+      return transformedInst
     })
+
+    console.log(`✅ Returning ${transformedInstitutions.length} transformed institutions`)
 
     return NextResponse.json(transformedInstitutions, {
       headers: {

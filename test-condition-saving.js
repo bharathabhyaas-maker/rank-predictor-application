@@ -8,7 +8,7 @@ const testConditionSaving = async () => {
     
     const examData = {
       name: 'Test Conditional Exam',
-      examCode: 'TEST-CONDITIONAL-2024',
+      examCode: 'TEST-CONDITIONAL-2025',
       type: 'conditional',
       description: 'Test exam with conditions',
       config: {
@@ -76,25 +76,38 @@ const testConditionSaving = async () => {
       
       if (examsResponse.ok) {
         const exams = await examsResponse.json()
-        const ourExam = exams.find(e => e.examCode === 'TEST-CONDITIONAL-2024')
+        const ourExam = exams.find(e => e.examCode === 'TEST-CONDITIONAL-2025')
         
         if (ourExam) {
           console.log('✅ Found our exam:', ourExam.name, 'ID:', ourExam.id)
           
           // Check conditions in the database
           try {
-            const conditionsResponse = await fetch(`http://localhost:3000/api/debug/exam-conditions?examId=${ourExam.id}`)
+            const conditionsResponse = await fetch(`http://localhost:3000/api/debug/exam-conditions`)
             
             if (conditionsResponse.ok) {
-              const conditions = await conditionsResponse.json()
-              console.log(`✅ Found ${conditions.length} conditions in database`)
+              const response = await conditionsResponse.json()
+              console.log('🔍 Debug response structure:', JSON.stringify(response, null, 2))
               
-              if (conditions.length > 0) {
-                console.log('📋 Sample condition from database:')
-                console.log(JSON.stringify(conditions[0], null, 2))
-                console.log('✅ SUCCESS: Conditions are properly saved in database!')
+              if (response.success && response.exams) {
+                const ourExamWithConditions = response.exams.find(e => e.id === ourExam.id)
+                
+                if (ourExamWithConditions && ourExamWithConditions.conditions) {
+                  const conditions = ourExamWithConditions.conditions
+                  console.log(`✅ Found ${conditions.length} conditions in database`)
+                  
+                  if (conditions.length > 0) {
+                    console.log('📋 Sample condition from database:')
+                    console.log(JSON.stringify(conditions[0], null, 2))
+                    console.log('✅ SUCCESS: Conditions are properly saved in database!')
+                  } else {
+                    console.error('❌ ERROR: No conditions found in database')
+                  }
+                } else {
+                  console.error('❌ ERROR: Could not find our exam in debug response')
+                }
               } else {
-                console.error('❌ ERROR: No conditions found in database')
+                console.error('❌ ERROR: Invalid debug response format')
               }
             } else {
               console.error('❌ Failed to get conditions:', conditionsResponse.statusText)
